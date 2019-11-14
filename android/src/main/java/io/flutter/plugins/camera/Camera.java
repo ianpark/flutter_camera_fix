@@ -22,6 +22,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.util.Log;
 import android.util.Range;
 import android.util.Size;
 import android.view.OrientationEventListener;
@@ -116,11 +117,31 @@ public class Camera {
     //     CameraUtils.getBestAvailableCamcorderProfileForResolutionPreset(cameraName, preset);
     // captureSize = new Size(recordingProfile.videoFrameWidth, recordingProfile.videoFrameHeight);
     final Size[] outputSizes = streamConfigurationMap.getOutputSizes(ImageFormat.JPEG);
-    captureSize = outputSizes[0];
+    captureSize = getCaptureSize(outputSizes, 2880);
+
+
     //captureSize = new Size(1600, 1200);
     // previewSize = computeBestPreviewSize(cameraName, preset);
-    previewSize = new Size(1600, 1200);
+    previewSize = getCaptureSize(outputSizes, 1024);
 }
+    Size getCaptureSize(Size[] sizes, int maxWidth) {
+      double targetRatio = 0.75;
+      Size bestSize = new Size(0, 0);
+      Log.d("Ian", "Selecting the capture size. targetRatio=" + targetRatio);
+
+      for(int i = 0 ; i < sizes.length ; ++i) {
+        Size itemSize = sizes[i];
+        double itemRatio = itemSize.getHeight() / (double)itemSize.getWidth();
+        if (itemRatio == targetRatio && itemSize.getWidth() <= maxWidth) {
+          Log.d("Ian", itemSize.toString());
+          if (bestSize.getWidth() < itemSize.getWidth()) {
+            bestSize = itemSize;
+          }
+        }
+      }
+      Log.d("Ian", "Chosen capture size" + bestSize.toString());
+      return bestSize;
+   }
 
 // https://stackoverflow.com/questions/47196243/android-camera2-increase-brightness
 private Range<Integer> getRange() {
