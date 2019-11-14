@@ -1,3 +1,13 @@
+This repository is not for the public users.
+
+
+Why I've created this fork:
+
+For some Flutter developers, the current camera plugin does not fit due to 1) low resolution 2) wrong ratio 3) crash. Flutter camera team is in the middle of refactoring their Camera plugin and aiming to release it by the end of the year. This repository will be removed once the new camera plugin fits the purposes.
+
+---
+
+
 # Camera Plugin
 
 [![pub package](https://img.shields.io/pub/v/camera.svg)](https://pub.dartlang.org/packages/camera)
