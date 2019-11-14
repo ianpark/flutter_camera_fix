@@ -22,6 +22,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.os.Build;
+import android.util.Range;
 import android.util.Size;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -58,6 +59,7 @@ public class Camera {
   private CaptureRequest.Builder captureRequestBuilder;
   private MediaRecorder mediaRecorder;
   private boolean recordingVideo;
+
   private CamcorderProfile recordingProfile;
   private int currentOrientation = ORIENTATION_UNKNOWN;
 
@@ -110,11 +112,42 @@ public class Camera {
     isFrontFacing =
         characteristics.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_FRONT;
     ResolutionPreset preset = ResolutionPreset.valueOf(resolutionPreset);
-    recordingProfile =
-        CameraUtils.getBestAvailableCamcorderProfileForResolutionPreset(cameraName, preset);
-    captureSize = new Size(recordingProfile.videoFrameWidth, recordingProfile.videoFrameHeight);
-    previewSize = computeBestPreviewSize(cameraName, preset);
-  }
+    // recordingProfile =
+    //     CameraUtils.getBestAvailableCamcorderProfileForResolutionPreset(cameraName, preset);
+    // captureSize = new Size(recordingProfile.videoFrameWidth, recordingProfile.videoFrameHeight);
+    final Size[] outputSizes = streamConfigurationMap.getOutputSizes(ImageFormat.JPEG);
+    captureSize = outputSizes[0];
+    //captureSize = new Size(1600, 1200);
+    // previewSize = computeBestPreviewSize(cameraName, preset);
+    previewSize = new Size(1600, 1200);
+}
+
+// https://stackoverflow.com/questions/47196243/android-camera2-increase-brightness
+private Range<Integer> getRange() {
+    CameraCharacteristics chars = null;
+    try {
+        chars = cameraManager.getCameraCharacteristics(cameraName);
+        Range<Integer>[] ranges = chars.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES);
+        Range<Integer> result = null;
+        for (Range<Integer> range : ranges) {
+            int upper = range.getUpper();
+            // 10 - min range upper for my needs
+            if (upper >= 10) {
+                if (result == null || upper < result.getUpper().intValue()) {
+                    result = range;
+                }
+            }
+        }
+        if (result == null) {
+            result = ranges[0];
+        }
+        return result;
+    } catch (CameraAccessException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+
 
   private void prepareMediaRecorder(String outputFilePath) throws IOException {
     if (mediaRecorder != null) {
@@ -249,6 +282,8 @@ public class Camera {
           cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
       captureBuilder.addTarget(pictureImageReader.getSurface());
       captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getMediaOrientation());
+      captureBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_FAST);
+      captureBuilder.set(CaptureRequest.JPEG_QUALITY, (byte)85);
 
       cameraCaptureSession.capture(
           captureBuilder.build(),
@@ -320,6 +355,15 @@ public class Camera {
               cameraCaptureSession = session;
               captureRequestBuilder.set(
                   CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
+              // PATCH
+              // https://stackoverflow.com/questions/47196243/android-camera2-increase-brightness
+              captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+              captureRequestBuilder.set(CaptureRequest.CONTROL_AE_LOCK, false);
+              captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 1);
+              // captureRequestBuilder.set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,getRange());
+              // PATCH END
+
               cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), null, null);
               if (onSuccessCallback != null) {
                 onSuccessCallback.run();
@@ -421,7 +465,9 @@ public class Camera {
   }
 
   public void startPreview() throws CameraAccessException {
-    createCaptureSession(CameraDevice.TEMPLATE_PREVIEW, pictureImageReader.getSurface());
+    if (pictureImageReader != null) {
+      createCaptureSession(CameraDevice.TEMPLATE_PREVIEW, pictureImageReader.getSurface());
+    }
   }
 
   public void startPreviewWithImageStream(EventChannel imageStreamChannel)
