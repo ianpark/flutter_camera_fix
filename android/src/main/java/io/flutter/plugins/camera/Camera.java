@@ -303,6 +303,7 @@ private Range<Integer> getRange() {
           cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
       captureBuilder.addTarget(pictureImageReader.getSurface());
       captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, getMediaOrientation());
+
       captureBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_FAST);
       captureBuilder.set(CaptureRequest.JPEG_QUALITY, (byte)85);
 
@@ -578,10 +579,13 @@ private Range<Integer> getRange() {
   }
 
   private int getMediaOrientation() {
-    final int sensorOrientationOffset =
-        (currentOrientation == ORIENTATION_UNKNOWN)
-            ? 0
-            : (isFrontFacing) ? -currentOrientation : currentOrientation;
-    return (sensorOrientationOffset + sensorOrientation + 360) % 360;
+    // Timesnap only wants 90 degree
+    return isFrontFacing ? 270 : 90;
+
+    // final int sensorOrientationOffset =
+    //     (currentOrientation == ORIENTATION_UNKNOWN)
+    //         ? 
+    //         : (isFrontFacing) ? -currentOrientation : currentOrientation;
+    // return (sensorOrientationOffset + sensorOrientation + 360) % 360;
   }
 }
