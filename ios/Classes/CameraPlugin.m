@@ -90,6 +90,11 @@ static FlutterError *getFlutterError(NSError *error) {
 }
 
 - (UIImageOrientation)getImageRotation {
+  if (_cameraPosition == AVCaptureDevicePositionBack) {
+    return UIImageOrientationRight;
+  } else {
+    return UIImageOrientationRight;
+  }
   float const threshold = 45.0;
   BOOL (^isNearValue)(float value1, float value2) = ^BOOL(float value1, float value2) {
     return fabsf(value1 - value2) < threshold;
@@ -286,10 +291,15 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
 }
 
 - (void)setCaptureSessionPreset:(ResolutionPreset)resolutionPreset {
+  _captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
+  _previewSize =
+      CGSizeMake(_captureDevice.activeFormat.highResolutionStillImageDimensions.width,
+                  _captureDevice.activeFormat.highResolutionStillImageDimensions.height);
+                  return;
   switch (resolutionPreset) {
     case max:
       if ([_captureSession canSetSessionPreset:AVCaptureSessionPresetHigh]) {
-        _captureSession.sessionPreset = AVCaptureSessionPresetHigh;
+        _captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
         _previewSize =
             CGSizeMake(_captureDevice.activeFormat.highResolutionStillImageDimensions.width,
                        _captureDevice.activeFormat.highResolutionStillImageDimensions.height);
