@@ -167,6 +167,7 @@ static ResolutionPreset getResolutionPresetForString(NSString *preset) {
 @property(readonly, nonatomic) int64_t textureId;
 @property(nonatomic, copy) void (^onFrameAvailable)();
 @property BOOL enableAudio;
+@property int counter;
 @property(nonatomic) FlutterEventChannel *eventChannel;
 @property(nonatomic) FLTImageStreamHandler *imageStreamHandler;
 @property(nonatomic) FlutterEventSink eventSink;
@@ -230,6 +231,7 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
   } @catch (NSError *e) {
     *error = e;
   }
+    _counter = 0;
   _enableAudio = enableAudio;
   _dispatchQueue = dispatchQueue;
   _captureSession = [[AVCaptureSession alloc] init];
@@ -377,6 +379,10 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
     return;
   }
   if (_isStreamingImages) {
+      _counter++;
+      if (_counter > 2) {
+          return;
+      }
     if (_imageStreamHandler.eventSink) {
       CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
       CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
@@ -394,7 +400,7 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
         planeCount = 1;
       }
 
-      for (int i = 0; i < planeCount; i++) {
+      for (int i = 0; i < 1; i++) {
         void *planeAddress;
         size_t bytesPerRow;
         size_t height;
@@ -655,6 +661,7 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
 
 - (void)startImageStreamWithMessenger:(NSObject<FlutterBinaryMessenger> *)messenger {
   if (!_isStreamingImages) {
+      _counter = 0;
     FlutterEventChannel *eventChannel =
         [FlutterEventChannel eventChannelWithName:@"plugins.flutter.io/camera/imageStream"
                                   binaryMessenger:messenger];
