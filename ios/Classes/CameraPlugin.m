@@ -294,19 +294,13 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
 
 - (void)setCaptureSessionPreset:(ResolutionPreset)resolutionPreset {
   _captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
-  _previewSize =
-      CGSizeMake(_captureDevice.activeFormat.highResolutionStillImageDimensions.width,
-                  _captureDevice.activeFormat.highResolutionStillImageDimensions.height);
-                  return;
   switch (resolutionPreset) {
     case max:
-      if ([_captureSession canSetSessionPreset:AVCaptureSessionPresetHigh]) {
         _captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
         _previewSize =
             CGSizeMake(_captureDevice.activeFormat.highResolutionStillImageDimensions.width,
                        _captureDevice.activeFormat.highResolutionStillImageDimensions.height);
         break;
-      }
     case ultraHigh:
       if ([_captureSession canSetSessionPreset:AVCaptureSessionPreset3840x2160]) {
         _captureSession.sessionPreset = AVCaptureSessionPreset3840x2160;
@@ -315,8 +309,8 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
       }
     case veryHigh:
       if ([_captureSession canSetSessionPreset:AVCaptureSessionPreset1920x1080]) {
-        _captureSession.sessionPreset = AVCaptureSessionPreset1920x1080;
-        _previewSize = CGSizeMake(1920, 1080);
+        _captureSession.sessionPreset = AVCaptureSessionPresetPhoto;
+        _previewSize = CGSizeMake(1280, 960);
         break;
       }
     case high:
@@ -379,10 +373,9 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
     return;
   }
   if (_isStreamingImages) {
-      _counter++;
-      if (_counter > 2) {
-          return;
-      }
+    if (_counter > 1) {
+      return;
+    }
     if (_imageStreamHandler.eventSink) {
       CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
       CVPixelBufferLockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
@@ -418,8 +411,28 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
           width = CVPixelBufferGetWidth(pixelBuffer);
         }
 
+
+        void *img_buffer = planeAddress;
+
+        // Crop the padding of the image if required
+        NSMutableData* mutableBuffer = [NSMutableData dataWithLength:sizeof(int) * 0];
+        if (bytesPerRow > width * 4) {
+            [mutableBuffer setLength: width * 4 * height];
+            
+            img_buffer = [mutableBuffer mutableBytes];
+            void *src = planeAddress;
+            void *dst = img_buffer;
+            int realBytesPerRow = (int)width * 4;
+            for( int line = 0; line < height; line++ ) {
+                memcpy(dst, src, realBytesPerRow );
+                src += bytesPerRow;
+                dst += realBytesPerRow;
+            }
+            bytesPerRow = realBytesPerRow;
+        }
+        
         NSNumber *length = @(bytesPerRow * height);
-        NSData *bytes = [NSData dataWithBytes:planeAddress length:length.unsignedIntegerValue];
+        NSData *bytes = [NSData dataWithBytes:img_buffer length:length.unsignedIntegerValue];
 
         NSMutableDictionary *planeBuffer = [NSMutableDictionary dictionary];
         planeBuffer[@"bytesPerRow"] = @(bytesPerRow);
@@ -439,6 +452,8 @@ FourCharCode const videoFormat = kCVPixelFormatType_32BGRA;
       _imageStreamHandler.eventSink(imageBuffer);
 
       CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+            // Run only once
+      _counter++;
     }
   }
   if (_isRecording && !_isRecordingPaused) {
